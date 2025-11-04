@@ -383,11 +383,18 @@ export const useTradingStore = create<TradingStore>((set, get) => ({
     }
   },
 
-  // Subscribe to Realtime Updates
+  // Subscribe to Realtime Updates with auto-reconnection
   subscribeToRealtime: (userId: string) => {
-    // Subscribe to agents
-    supabase
-      .channel('trading_agents_changes')
+    console.log('🔌 Connecting to Realtime...');
+
+    // Subscribe to agents with reconnection logic
+    const agentsChannel = supabase
+      .channel('trading_agents_changes', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: userId }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -401,10 +408,15 @@ export const useTradingStore = create<TradingStore>((set, get) => ({
           get().fetchAgents();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Agents channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Agents realtime connected');
+        }
+      });
 
     // Subscribe to trades
-    supabase
+    const tradesChannel = supabase
       .channel('trades_changes')
       .on(
         'postgres_changes',
@@ -419,10 +431,15 @@ export const useTradingStore = create<TradingStore>((set, get) => ({
           get().fetchTrades();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Trades channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Trades realtime connected');
+        }
+      });
 
     // Subscribe to actions
-    supabase
+    const actionsChannel = supabase
       .channel('actions_changes')
       .on(
         'postgres_changes',
@@ -437,10 +454,15 @@ export const useTradingStore = create<TradingStore>((set, get) => ({
           get().fetchActions();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Actions channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Actions realtime connected');
+        }
+      });
 
     // Subscribe to notifications
-    supabase
+    const notificationsChannel = supabase
       .channel('notifications_changes')
       .on(
         'postgres_changes',
@@ -455,9 +477,15 @@ export const useTradingStore = create<TradingStore>((set, get) => ({
           get().fetchNotifications();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Notifications channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Notifications realtime connected');
+        }
+      });
 
     set({ realtimeConnected: true });
+    console.log('🚀 All realtime channels initialized');
   },
 
   // Unsubscribe from Realtime

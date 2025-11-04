@@ -22,6 +22,7 @@ import { AgentRunner } from "@/components/AgentRunner";
 import { AgentCreationWizard } from "@/components/AgentCreationWizard";
 import { AgentLeaderboard } from "@/components/AgentLeaderboard";
 import { AgentActivityFeed } from "@/components/AgentActivityFeed";
+import { AutopilotTrading } from "@/components/AutopilotTrading";
 import { useAuth } from "@/hooks/useAuth";
 import { useTradingStore } from "@/stores/tradingStore";
 import { Badge } from "@/components/ui/badge";
@@ -331,6 +332,14 @@ export default function EnhancedDashboard() {
                           agentId={agent.id}
                           agentName={agent.name}
                           onUpdate={fetchAgents}
+                        />
+
+                        {/* Autopilot Trading - Runs automatically when agent is active */}
+                        <AutopilotTrading
+                          agentId={agent.id}
+                          agentName={agent.name}
+                          isActive={agent.status === 'active'}
+                          tradingInterval={30000}
                         />
                       </div>
                     </Card>

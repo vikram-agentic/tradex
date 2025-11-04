@@ -53,7 +53,24 @@ serve(async (req) => {
       .single();
 
     if (keyError || !apiKeyData) {
-      throw new Error('Anthropic API key not configured');
+      throw new Error('Anthropic API key not configured. Please add your API key in Settings.');
+    }
+
+    // Decrypt the API key
+    const encryptionKey = Deno.env.get('API_KEY_ENCRYPTION_SECRET');
+    if (!encryptionKey) {
+      throw new Error('Encryption key not configured');
+    }
+
+    const { data: decryptedKey, error: decryptError } = await supabase
+      .rpc('decrypt_api_key', {
+        encrypted_key: apiKeyData.encrypted_key,
+        encryption_key: encryptionKey
+      });
+
+    if (decryptError || !decryptedKey) {
+      console.error('Decryption error:', decryptError);
+      throw new Error('Failed to decrypt API key');
     }
 
     // Get recent trades for context
@@ -106,12 +123,12 @@ Based on this information, what trading action should I take?`;
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': apiKeyData.encrypted_key,
+        'x-api-key': decryptedKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
         system: systemPrompt,
         messages: [

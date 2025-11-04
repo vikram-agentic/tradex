@@ -67,11 +67,34 @@ serve(async (req) => {
       throw new Error('Alpaca API keys not configured');
     }
 
-    const alpacaKey = apiKeys.find(k => k.service === keyService)?.encrypted_key;
-    const alpacaSecret = apiKeys.find(k => k.service === secretService)?.encrypted_key;
+    const encryptedKey = apiKeys.find(k => k.service === keyService)?.encrypted_key;
+    const encryptedSecret = apiKeys.find(k => k.service === secretService)?.encrypted_key;
 
-    if (!alpacaKey || !alpacaSecret) {
+    if (!encryptedKey || !encryptedSecret) {
       throw new Error('Missing Alpaca credentials');
+    }
+
+    // Decrypt the API keys
+    const encryptionKey = Deno.env.get('API_KEY_ENCRYPTION_SECRET');
+    if (!encryptionKey) {
+      throw new Error('Encryption key not configured');
+    }
+
+    const { data: alpacaKey, error: keyDecryptError } = await supabase
+      .rpc('decrypt_api_key', {
+        encrypted_key: encryptedKey,
+        encryption_key: encryptionKey
+      });
+
+    const { data: alpacaSecret, error: secretDecryptError } = await supabase
+      .rpc('decrypt_api_key', {
+        encrypted_key: encryptedSecret,
+        encryption_key: encryptionKey
+      });
+
+    if (keyDecryptError || secretDecryptError || !alpacaKey || !alpacaSecret) {
+      console.error('Decryption error:', keyDecryptError || secretDecryptError);
+      throw new Error('Failed to decrypt Alpaca credentials');
     }
 
     // Get current price from Alpaca

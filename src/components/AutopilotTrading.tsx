@@ -172,9 +172,13 @@ export const AutopilotTrading = ({
         // Execute the trade
         const executeResponse = await supabase.functions.invoke('execute-trade', {
           body: {
-            tradeId: trade.id,
-            userId: session.user.id,
-            isPaperTrading: true
+            agentId: agentId,
+            symbol: decision.symbol,
+            side: decision.action,
+            quantity: decision.quantity,
+            orderType: 'market',
+            useLive: false, // Always use paper trading for safety
+            reasoning: decision.reasoning
           }
         });
 

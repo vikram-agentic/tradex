@@ -1,0 +1,111 @@
+🚀 TRADEX AI - DEPLOYMENT CHECKLIST
+=====================================
+
+✅ COMPLETED:
+- [x] Frontend code built and running
+- [x] Supabase Edge Functions deployed (agent-decision, execute-trade, agent-scheduler)
+- [x] Database migrations applied
+- [x] Real-time WebSocket connections working
+
+🔧 REQUIRED CONFIGURATION:
+
+1. SET SUPABASE SECRETS (CRITICAL!)
+   Run these commands in your terminal:
+
+   npx supabase secrets set API_KEY_ENCRYPTION_SECRET=your-random-32-char-secret
+
+   Example:
+   npx supabase secrets set API_KEY_ENCRYPTION_SECRET=MySuper$ecretKey123456789012345
+
+   ⚠️ This MUST be set or API key encryption will fail!
+
+2. ADD YOUR API KEYS IN THE APP
+   a) Go to Settings page in the app
+   b) Add your Anthropic API key (starts with sk-ant-...)
+   c) Add your Alpaca Paper Trading keys (get from alpaca.markets)
+
+   If you get "409 Conflict" error:
+   - The key already exists
+   - Delete it first from Settings, then re-add
+   - OR use the manage-api-keys function to update
+
+3. RUN THE MIGRATION FOR ENCRYPTION
+   - Go to Supabase Dashboard → SQL Editor
+   - Run the migration file:
+     supabase/migrations/20251104130000_add_encryption_and_performance_tracking.sql
+
+   This adds the decrypt_api_key() function
+
+4. TEST THE SETUP
+   - Create an agent in the dashboard
+   - Click "Start" button
+   - Watch browser console for logs
+   - Should see: "🤖 Agent Name: Starting trading cycle..."
+
+🎯 HOW IT WORKS:
+
+1. When you click "Start" on an agent:
+   → AutopilotTrading component activates
+   → Runs trading cycle every 30 seconds
+
+2. Each cycle:
+   → Fetches mock market data
+   → Calls agent-decision function
+   → Claude analyzes and decides (BUY/SELL/HOLD)
+   → If BUY/SELL with >70% confidence → Executes trade
+   → Updates dashboard in real-time
+
+3. Your API keys are:
+   → Encrypted in database using pgcrypto
+   → Decrypted server-side only
+   → Never exposed to browser
+
+🐛 TROUBLESHOOTING:
+
+ERROR: "500 Internal Server Error" from agent-decision
+FIX:
+- Check Supabase Dashboard → Edge Functions → Logs
+- Likely cause: Anthropic API key not added in Settings
+- OR encryption secret not set in Supabase
+
+ERROR: "409 Conflict" when adding API key
+FIX:
+- API key already exists for that service
+- Go to Settings → Delete the existing key → Re-add
+
+ERROR: "Failed to decrypt API key"
+FIX:
+- Run: npx supabase secrets set API_KEY_ENCRYPTION_SECRET=your-secret
+- Make sure migration with decrypt_api_key() function is applied
+
+ERROR: Agent not trading automatically
+FIX:
+- Check agent status is "active" (not paused)
+- Open browser console → Should see trading cycle logs
+- Check Anthropic API key is valid
+
+🎉 ONCE WORKING:
+
+You'll see:
+- 🤖 Agent Name: Starting trading cycle... (every 30 seconds)
+- 🧠 Agent Name: Asking Claude for trading decision...
+- 💡 Agent Name Decision: BUY/SELL/HOLD
+- 📈 Agent Name: Executing BUY trade for AAPL
+- ✅ Agent Name: Trade executed successfully!
+
+Real-time updates:
+- Activity feed shows all trades
+- Leaderboard updates automatically
+- Agent cards show live balance/profit
+- Notifications appear for trades
+
+🚀 YOU'RE ALL SET!
+
+The app is now a FULLY AUTONOMOUS TRADING PLATFORM where:
+- Multiple AI agents trade 24/7
+- Each agent uses Claude AI for decisions
+- Agents compete on the leaderboard
+- All trades happen automatically
+- Real-time updates everywhere
+
+IMPORTANT: Start with paper trading only! Test thoroughly before using real money.

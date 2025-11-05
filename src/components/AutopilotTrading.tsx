@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTradingStore } from '@/stores/tradingStore';
+import { fetchRealMarketData, getSymbolsForMarketType } from '@/lib/marketData';
 
 interface AutopilotTradingProps {
   agentId: string;
@@ -20,51 +21,22 @@ export const AutopilotTrading = ({
   const isRunningRef = useRef(false);
   const { fetchAgents, fetchTrades, fetchActions } = useTradingStore();
 
-  // Fetch market data from Alpaca
-  const fetchMarketData = async () => {
+  // Fetch REAL market data from Alpaca
+  const fetchMarketData = async (agentMarketType: string) => {
     try {
-      // Get user's Alpaca keys
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      // Get appropriate symbols for agent's market type
+      const symbols = getSymbolsForMarketType(agentMarketType);
 
-      const { data: alpacaKeyData } = await supabase
-        .from('api_keys')
-        .select('encrypted_key')
-        .eq('user_id', user.id)
-        .eq('service', 'alpaca_paper_key')
-        .single();
+      console.log(`📊 Fetching real market data for ${symbols.length} symbols:`, symbols);
 
-      const { data: alpacaSecretData } = await supabase
-        .from('api_keys')
-        .select('encrypted_key')
-        .eq('user_id', user.id)
-        .eq('service', 'alpaca_paper_secret')
-        .single();
+      // Fetch real market data
+      const marketData = await fetchRealMarketData(symbols);
 
-      if (!alpacaKeyData || !alpacaSecretData) {
-        console.log('Alpaca keys not configured');
-        return null;
-      }
-
-      // For demo, return mock data
-      // In production, this would call Alpaca API
-      const symbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA', 'AMZN'];
-      const marketData: Record<string, any> = {};
-
-      symbols.forEach(symbol => {
-        marketData[symbol] = {
-          symbol,
-          price: Math.random() * 200 + 100,
-          change: (Math.random() - 0.5) * 10,
-          changePercent: (Math.random() - 0.5) * 5,
-          volume: Math.floor(Math.random() * 10000000),
-          timestamp: new Date().toISOString()
-        };
-      });
+      console.log('✅ Market data fetched:', Object.keys(marketData).length, 'symbols');
 
       return marketData;
     } catch (error) {
-      console.error('Error fetching market data:', error);
+      console.error('❌ Error fetching market data:', error);
       return null;
     }
   };
@@ -96,13 +68,25 @@ export const AutopilotTrading = ({
       isRunningRef.current = true;
       console.log(`🤖 ${agentName}: Starting trading cycle...`);
 
-      // Fetch market data and news
+      // Get agent details to know market type
+      const { data: agent } = await supabase
+        .from('trading_agents')
+        .select('market_type')
+        .eq('id', agentId)
+        .single();
+
+      if (!agent) {
+        console.error(`Agent ${agentName}: Not found`);
+        return;
+      }
+
+      // Fetch REAL market data and news
       const [marketData, newsData] = await Promise.all([
-        fetchMarketData(),
+        fetchMarketData(agent.market_type),
         fetchNewsData()
       ]);
 
-      if (!marketData) {
+      if (!marketData || Object.keys(marketData).length === 0) {
         console.log(`Agent ${agentName}: No market data available`);
         return;
       }

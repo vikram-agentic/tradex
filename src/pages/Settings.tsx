@@ -40,20 +40,16 @@ export default function Settings() {
       .eq('user_id', user.id);
 
     if (!error && data) {
-      const keys: any = {
-        anthropic: "",
-        alpaca_paper_key: "",
-        alpaca_paper_secret: "",
-        alpaca_live_key: "",
-        alpaca_live_secret: "",
-        newsApi: "",
-      };
-      data.forEach((item) => {
-        if (item.service in keys) {
-          keys[item.service] = "••••••••"; // Show masked value
-        }
+      // Only update keys that exist in database, preserve current form values
+      setApiKeys(prevKeys => {
+        const updatedKeys = { ...prevKeys };
+        data.forEach((item) => {
+          if (item.service in updatedKeys) {
+            updatedKeys[item.service as keyof typeof updatedKeys] = "••••••••"; // Show masked value
+          }
+        });
+        return updatedKeys;
       });
-      setApiKeys(keys);
     }
   };
 
@@ -63,23 +59,42 @@ export default function Settings() {
 
     try {
       // Save API keys
+      const savePromises = [];
       for (const [service, key] of Object.entries(apiKeys)) {
-        if (key && key !== "••••••••") {
-          await supabase
-            .from('api_keys')
-            .upsert({
-              user_id: user.id,
-              service,
-              encrypted_key: key, // In production, encrypt this on the backend
-            });
+        if (key && key !== "••••••••" && key.trim() !== "") {
+          savePromises.push(
+            supabase
+              .from('api_keys')
+              .upsert({
+                user_id: user.id,
+                service,
+                encrypted_key: key, // In production, encrypt this on the backend
+              }, {
+                onConflict: 'user_id,service'
+              })
+          );
         }
       }
+
+      await Promise.all(savePromises);
 
       toast({
         title: "Settings saved",
         description: "Your API keys have been securely stored.",
       });
+
+      // Mask the saved keys in the form
+      setApiKeys(prevKeys => {
+        const masked = { ...prevKeys };
+        Object.keys(masked).forEach(key => {
+          if (masked[key as keyof typeof masked] && masked[key as keyof typeof masked] !== "••••••••") {
+            masked[key as keyof typeof masked] = "••••••••";
+          }
+        });
+        return masked;
+      });
     } catch (error) {
+      console.error('Error saving API keys:', error);
       toast({
         title: "Error",
         description: "Failed to save settings",
